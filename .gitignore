@@ -1,0 +1,51 @@
+# InterSystems IRIS specific
+*.dat
+*.dir
+*.ext
+*.ids
+*.idx
+*.gz
+*.lck
+*.1
+*.log
+*.syc
+iris.key
+IRIS.DAT
+registry.dat
+journal/
+stream/
+temp/
+csp/
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE specific files
+.idea/
+.vscode/*
+!.vscode/settings.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.sublime-workspace
+*.sublime-project
+*.code-workspace
+
+# Project specific
+/dist/
+/node_modules/
+/build/
+.env
+.env.*
+!.env.example
+
+# Backup files
+*.bak
+*~
+*.swp
+*.swo

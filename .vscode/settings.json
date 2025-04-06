@@ -1,0 +1,20 @@
+{
+  "objectscript.conn": {
+    "server": "localhost",
+    "ns": "BVI",
+    "active": false
+  },
+  "intersystems.servers": {
+    "local": {
+      "webServer": {
+        "scheme": "http",
+        "host": "localhost",
+        "port": 52773
+      },
+      "username": "_SYSTEM"
+    }
+  },
+  "[objectscript]": {
+    "editor.formatOnType": true
+  }
+}

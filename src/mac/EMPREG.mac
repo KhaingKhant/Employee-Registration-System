@@ -1,0 +1,7 @@
+ROUTINE EMPREG
+
+EMPREG    ; Employee Registration Main Routine
+    Set $NAMESPACE = "BVI"
+    Do ##class(BVI.EmployeeRegistration).Main()
+    Set $NAMESPACE = "SAMPLES"
+    Quit
