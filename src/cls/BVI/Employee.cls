@@ -40,7 +40,7 @@ ClassMethod ValidateHankaku(input As %String) As %Boolean
 /// Validate employee number format
 ClassMethod ValidateEmployeeNumber(num As %String) As %Boolean
 {
-    Quit (num?3N) || (num?2N) || (num?1N)
+    Quit (num?4N) || (num?3N) || (num?2N) || (num?1N)
 }
 
 Storage Default

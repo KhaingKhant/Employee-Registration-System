@@ -1,0 +1,158 @@
+ROUTINE EmployeeRegistration
+    Do Main
+    Quit
+
+Main
+    Do DisplayHeader
+    New employee
+    Set state = 0  ; 0: Employee Number, 1: NameKanji, 2: NameKana, 3: Address
+    For  {
+        Set cmd = $$GetInput(state, .employee)
+        Quit:cmd="$"
+        If cmd="@" {
+            Do SaveEmployee(.employee)
+            Set state = 0
+        }
+        ElseIf cmd="DEL" {
+            Do DeleteEmployee(.employee)
+            Set state = 0
+        }
+        ElseIf cmd="/" {
+            Set state = $Select(state>0:state-1, 1:0)
+        }
+        ElseIf cmd="//" {
+            Set state = 0
+        }
+        Else {
+            Set state = $$ProcessState(state, cmd, .employee)
+        }
+    }
+    Write !,"Program terminated.",!
+    Quit
+
+DisplayHeader
+    Write !,"===================================="
+    Write !,"    Employee Registration Program   "
+    Write !,"====================================",!
+    Quit
+
+GetInput(state, employee)
+    New prompt, input
+    Set prompt = $Select(state=0:"1    社員番号  =   ", state=1:"2    氏名漢字  = ", state=2:"3    氏名カナ  = ", state=3:"4    住　　所  = ", 1:"コマンド入力 [@=保存, DEL=削除, /=上, //=最初, $=終了]: ")
+    Write !,prompt
+    Read input
+    Quit input
+
+ProcessState(state, input, employee)
+    If state=0 {
+        If '$$ValidateEmployeeNumber(input) {
+            Write !,"無効な社員番号!",!
+            Quit 0
+        }
+        ; Check if employee exists in global
+        If $Data(^BVIEmployee(input)) {
+            Merge employee = ^BVIEmployee(input)
+            Write !,"既存のレコードを読み込みました:",!
+            Do DisplayEmployee(.employee)
+        }
+        Else {
+            Do InitEmployee(.employee)
+            Set employee("EmployeeNumber") = input
+        }
+        Quit 1
+    }
+    ElseIf state=1 {
+        If '$$ValidateZenkaku(input) {
+            Write !,"無効な漢字入力!",!
+            Quit 1
+        }
+        Set employee("NameKanji") = input
+        Quit 2
+    }
+    ElseIf state=2 {
+        If '$$ValidateHankaku(input) {
+            Write !,"無効なカナ入力!",!
+            Quit 2
+        }
+        Set employee("NameKana") = input
+        Quit 3
+    }
+    ElseIf state=3 {
+        ; No validation for address input
+        Set employee("Address") = input
+        Quit 4
+    }
+    Quit state
+
+SaveEmployee(employee)
+    If $Data(employee) {
+        Set status = $$Save(.employee)
+        If status {
+            Write !,"保存成功!",!
+            Do DisplayEmployee(.employee)
+        }
+        Else {
+            Write !,"保存エラー!",!
+        }
+    }
+    Else {
+        Write !,"保存するデータがありません!",!
+    }
+    Quit
+
+DeleteEmployee(employee)
+    If $Data(employee) && $Get(employee("EmployeeNumber"))'="" {
+        Set status = $$Delete(employee("EmployeeNumber"))
+        If status {
+            Write !,"削除成功!",!
+        }
+        Else {
+            Write !,"削除エラー!",!
+        }
+    }
+    Else {
+        Write !,"削除対象がありません!",!
+    }
+    Quit
+
+DisplayEmployee(employee)
+    Write !,"社員番号: ",$Get(employee("EmployeeNumber"))
+    Write !,"氏名漢字: ",$Get(employee("NameKanji"))
+    Write !,"氏名カナ: ",$Get(employee("NameKana"))
+    Write !,"住所: ",$Get(employee("Address")),!
+    Quit
+
+ValidateZenkaku(input)
+    If input = "" Quit 0
+    Quit input?1.ZFWCHARZ
+
+ValidateHankaku(input)
+    If input = "" Quit 0
+    Quit input?.ZHWKATAZ
+
+ValidateEmployeeNumber(num)
+    Quit (num?4N) || (num?3N) || (num?2N) || (num?1N)
+
+Save(emp)
+    If $Get(emp("EmployeeNumber"))'="" {
+        New num
+        Set num = emp("EmployeeNumber")
+        Kill ^BVIEmployee(num)
+        Merge ^BVIEmployee(num) = emp
+        Quit 1
+    }
+    Quit 0
+
+Delete(num)
+    If $Data(^BVIEmployee(num)) {
+        Kill ^BVIEmployee(num)
+        Quit 1
+    }
+    Quit 0
+
+InitEmployee(emp)
+    Set emp("EmployeeNumber") = ""
+    Set emp("NameKanji") = ""
+    Set emp("NameKana") = ""
+    Set emp("Address") = ""
+    Quit

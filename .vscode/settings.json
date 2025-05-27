@@ -1,8 +1,8 @@
 {
   "objectscript.conn": {
-    "server": "localhost",
-    "ns": "BVI",
-    "active": false
+    "server": "default~iris",
+    "ns": "USER",
+    "active": true
   },
   "intersystems.servers": {
     "local": {
