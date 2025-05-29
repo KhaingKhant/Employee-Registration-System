@@ -4,7 +4,8 @@ ROUTINE EmployeeRegistration
 
 Main
     Do DisplayHeader
-    New employee
+    New employee,position
+
     Set state = 0  ; 0: Employee Number, 1: NameKanji, 2: NameKana, 3: Address
     For  {
         Set cmd = $$GetInput(state, .employee)
@@ -18,16 +19,41 @@ Main
             Set state = 0
         }
         ElseIf cmd="/" {
-            Set state = $Select(state>0:state-1, 1:0)
+            Do MoveOneLineUp(state)
         }
         ElseIf cmd="//" {
+            Do MoveToStart(state)
             Set state = 0
         }
         Else {
-            Set state = $$ProcessState(state, cmd, .employee)
+            ; If not a valid command or input, show error
+            Set newState = $$ProcessState(state, cmd, .employee ,.position)
+            If newState = state {
+                Write !,"無効な入力またはコマンドです。",!
+            }
+            Set state = newState
         }
     }
     Write !,"Program terminated.",!
+    Quit
+
+MoveOneLineUp(state)
+    Set state = $Select(state>0:state-1, 1:0)
+    ; Move cursor up one line and clear that line
+    #; Write $CHAR(27)_"[1A"   ; Move cursor up one line
+    #; Write $CHAR(27)_"[2K"   ; Clear entire line
+    Quit state
+
+
+MoveToStart(state)
+    ; Move cursor to the top of the screen
+    Write !,"Moving to start..."
+    Do SetCursor(0)
+    Set state = 0
+    Quit
+
+SetCursor(state)
+    Write $CHAR(27)_"["_state_"H"
     Quit
 
 DisplayHeader
@@ -38,12 +64,17 @@ DisplayHeader
 
 GetInput(state, employee)
     New prompt, input
-    Set prompt = $Select(state=0:"1    社員番号  =   ", state=1:"2    氏名漢字  = ", state=2:"3    氏名カナ  = ", state=3:"4    住　　所  = ", 1:"コマンド入力 [@=保存, DEL=削除, /=上, //=最初, $=終了]: ")
+    Set prompt = $Select(
+        state=0:"1    社員番号  = ",
+        state=1:"2    氏名漢字  = ", 
+        state=2:"3    氏名カナ  = ",
+        state=3:"4    住　　所  = ", 
+        4:"コマンド入力 [@=保存, DEL=削除, /=上, //=最初, $=終了]: ")
     Write !,prompt
     Read input
     Quit input
 
-ProcessState(state, input, employee)
+ProcessState(state, input, employee,position)
     If state=0 {
         If '$$ValidateEmployeeNumber(input) {
             Write !,"無効な社員番号!",!
@@ -52,12 +83,15 @@ ProcessState(state, input, employee)
         ; Check if employee exists in global
         If $Data(^BVIEmployee(input)) {
             Merge employee = ^BVIEmployee(input)
+            Write !, "",employee("EmployeeNumber"), !
             Write !,"既存のレコードを読み込みました:",!
             Do DisplayEmployee(.employee)
+            Quit 4
         }
         Else {
             Do InitEmployee(.employee)
             Set employee("EmployeeNumber") = input
+            Set position("EmployeeNumber") = $Y
         }
         Quit 1
     }
@@ -67,6 +101,7 @@ ProcessState(state, input, employee)
             Quit 1
         }
         Set employee("NameKanji") = input
+        Set position("NameKanji") = $Y
         Quit 2
     }
     ElseIf state=2 {
@@ -75,11 +110,14 @@ ProcessState(state, input, employee)
             Quit 2
         }
         Set employee("NameKana") = input
+        Set position("NameKanji") = $Y
+
         Quit 3
     }
     ElseIf state=3 {
         ; No validation for address input
         Set employee("Address") = input
+        Set position("Address") = $Y
         Quit 4
     }
     Quit state
@@ -116,19 +154,23 @@ DeleteEmployee(employee)
     Quit
 
 DisplayEmployee(employee)
-    Write !,"社員番号: ",$Get(employee("EmployeeNumber"))
-    Write !,"氏名漢字: ",$Get(employee("NameKanji"))
-    Write !,"氏名カナ: ",$Get(employee("NameKana"))
-    Write !,"住所: ",$Get(employee("Address")),!
+    Write !,"1    社員番号  = ",$Get(employee("EmployeeNumber"))
+    Write !,"2    氏名漢字  = ",$Get(employee("NameKanji"))
+    Write !,"3    氏名カナ  = ",$Get(employee("NameKana"))
+    Write !,"4    住　　所  = ",$Get(employee("Address")),!
     Quit
 
 ValidateZenkaku(input)
-    If input = "" Quit 0
-    Quit input?1.ZFWCHARZ
+    If $MATCH(input, "^[一-龥ぁ-んァ-ヶー　]+$") {
+        Quit 1
+    }
+    Quit 0
 
-ValidateHankaku(input)
-    If input = "" Quit 0
-    Quit input?.ZHWKATAZ
+ValidateHankaku(input)  
+    If $MATCH(input, "^[ｦ-ﾟ ｡-ﾟ]+$") {
+        Quit 2
+    }
+    Quit 0
 
 ValidateEmployeeNumber(num)
     Quit (num?4N) || (num?3N) || (num?2N) || (num?1N)
@@ -156,3 +198,5 @@ InitEmployee(emp)
     Set emp("NameKana") = ""
     Set emp("Address") = ""
     Quit
+
+
