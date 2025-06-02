@@ -74,15 +74,13 @@ SetCursorState(rowNo)
     Quit
 
 ProcessState(state, cmd, employee)
-    ; Process the input based on the current state
     If state=1 {
         If '$$ValidateEmployeeNumber(cmd) {
-            Write !,"無効な社員番号!",!
+            Write ?30,"無効な社員番号!",!
             Quit 1
         }
-        ; 社員番号
-        If cmd'="" {
-            If $Data(^BVIEmployee(cmd)) {
+
+        If $Data(^BVIEmployee(cmd)) {
             Merge employee = ^BVIEmployee(cmd)
             Write !, "",employee("EmployeeNumber"), !
             Write !,"既存のレコードを読み込みました:",!
@@ -94,29 +92,29 @@ ProcessState(state, cmd, employee)
             Set employee("EmployeeNumber") = cmd
             Set ^CusorPosition(1) = $Y
             Set state=state+1
-
         }
-        } 
     } ElseIf state=2 {
-        If cmd'="" {
-            Set employee(2)=cmd
-            Set state=state+1
-            Set ^CusorPosition(2) = $Y
+        If '$$ValidateZenkaku(cmd) {
+            Write ?30,"無効な漢字入力!",!
+            Quit 2
         }
+        Set employee("NameKanji") = cmd
+        Set state=state+1
+        Set ^CusorPosition(2) = $Y
+
     } ElseIf state=3 {
-        ; 氏名カナ
-        If cmd'="" {
-            Set employee(3)=cmd
-            Set state=state+1
-            Set ^CusorPosition(3) = $Y
+        If '$$ValidateHankaku(cmd) {
+            Write ?30,"無効なカナ入力!",!
+            Quit 3
         }
+        Set employee("NameKana") = cmd
+        Set state=state+1
+        Set ^CusorPosition(3) = $Y
+        
     } ElseIf state=4 {
-        If cmd'="" {
-            Set employee(4)=cmd
-            Set state=state+1
-            Set ^CusorPosition(4) = $Y
-            
-        }
+        Set employee("Address") = cmd
+        Set state=state+1
+        Set ^CusorPosition(4) = $Y
     } ElseIf state=5 {
         If cmd="@" {
             Return 5  
@@ -148,19 +146,27 @@ GetInput(state)
     if state=5 Write !
     Write prompt
     Read input
-    W !
+    #; if state= 1 {
+    #;     If '$$ValidateEmployeeNumber(state) {
+    #;         Write ?30,"無効な社員番号!",!
+    #;         Quit 1
+    #;     }
+    #; }
+    #; ElseIf state=2 {
+    #;     If '$$ValidateZenkaku(input) {
+    #;         Write ?30,"無効な漢字入力!",!
+    #;         Quit 2
+    #;     }
+    #; }
+    #; ElseIf state=3 {
+    #;     If '$$ValidateHankaku(input) {
+    #;         Write ?30,"無効なカナ入力!",!
+    #;         Quit 3
+    #;     }
+    #; }
+    W ! ; for next line input
     Quit input
 
-#; SaveEmployee(employee)
-#;     Write !,"",employee(1),!
-#;     Write !,"[登録しました]",!
-#;     Hang 1
-#;     Do Main
-#;     Quit
-
-#; DeleteEmployee(employee)
-#;     Write !,"[削除しました]",!
-#;     Quit
 
 
 SaveEmployee(employee)
