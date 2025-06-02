@@ -1,0 +1,243 @@
+ROUTINE EMP
+    Do Main
+    Quit
+
+Main
+    Do DisplayHeader
+    New employee, state, done, cmd
+    Set ^CusorPosition = ""
+    Set ^BVIEmployee = ""  ; Initialize global for employee records
+
+    Set employee(1)="", employee(2)="", employee(3)="", employee(4)=""
+    Set state=1  ; 1: 社員番号, 2: 氏名漢字, 3: 氏名カナ, 4: 住所
+    Set done=0
+
+    While 'done {
+        Set cmd = $$GetInput(state)
+        If cmd="" {
+            WRITE $CHAR(27)_"[A"
+        }
+        If cmd="$" { Set done=1 Quit }
+        ElseIf cmd="/" {
+            If state>1 {
+                Set state=state-1 
+                Set employee(state)=""
+                Set state = $$MoveOneLineUp(state)
+            }
+        }
+        ElseIf cmd="//" {
+            Set state=1
+            Set employee(1)="", employee(2)="", employee(3)="", employee(4)=""
+            Set state = $$MoveToStart(state)
+        }
+        ElseIf cmd="@" {
+            If state=5{
+                Do SaveEmployee(.employee)
+                Set state=1 
+                Set employee(1)="", employee(2)="", employee(3)="", employee(4)=""
+
+            } 
+        }
+        ElseIf cmd="DEL" {
+            If state=5 {
+                Do DeleteEmployee(.employee)
+                Set state=1 Set employee(1)="", employee(2)="", employee(3)="", employee(4)=""
+            }
+        }
+        Else {
+            ; Normal input, store and go next
+            If state<5 {
+                Set newState = $$ProcessState(state, cmd, .employee)
+                Set state = newState
+                Set employee(state)=cmd
+            }
+        }
+    }
+    Write !,"プログラムを終了しました。",!
+    Quit
+
+MoveOneLineUp(state)
+    ; Move cursor up one line and clear that line (dynamic, for any field)
+    Do SetCursorState(^CusorPosition(state))
+    Quit state
+
+MoveToStart(state)
+    ; Move cursor to the top of the screen
+    Do SetCursorState(^CusorPosition(1))
+    Write $C(27)_"[0J"  
+    Quit state
+
+SetCursorState(rowNo)
+    Write $C(27)_"["_rowNo_"H"
+    Set $Y= rowNo - 1
+    Write $C(27)_"[0J"  
+    Quit
+
+ProcessState(state, cmd, employee)
+    ; Process the input based on the current state
+    If state=1 {
+        If '$$ValidateEmployeeNumber(cmd) {
+            Write !,"無効な社員番号!",!
+            Quit 1
+        }
+        ; 社員番号
+        If cmd'="" {
+            If $Data(^BVIEmployee(cmd)) {
+            Merge employee = ^BVIEmployee(cmd)
+            Write !, "",employee("EmployeeNumber"), !
+            Write !,"既存のレコードを読み込みました:",!
+            Do DisplayEmployee(.employee)
+            Quit 5
+        }
+        Else {
+            Do InitEmployee(.employee)
+            Set employee("EmployeeNumber") = cmd
+            Set ^CusorPosition(1) = $Y
+            Set state=state+1
+
+        }
+        } 
+    } ElseIf state=2 {
+        If cmd'="" {
+            Set employee(2)=cmd
+            Set state=state+1
+            Set ^CusorPosition(2) = $Y
+        }
+    } ElseIf state=3 {
+        ; 氏名カナ
+        If cmd'="" {
+            Set employee(3)=cmd
+            Set state=state+1
+            Set ^CusorPosition(3) = $Y
+        }
+    } ElseIf state=4 {
+        If cmd'="" {
+            Set employee(4)=cmd
+            Set state=state+1
+            Set ^CusorPosition(4) = $Y
+            
+        }
+    } ElseIf state=5 {
+        If cmd="@" {
+            Return 5  
+        } ElseIf cmd="DEL" {
+            Return 5  
+        } ElseIf cmd="/" {
+            Return state-1  
+        } ElseIf cmd="//" {
+            Return 1  
+        }
+    }
+    Return state    
+DisplayHeader
+    Write #!   ; Clear screen
+    Write "=========================="
+    Write !!, "＊＊＊社員登録PG＊＊＊", !!!
+    Quit
+
+
+GetInput(state)
+    New prompt, input
+    Set prompt = $Select(
+        state=1:"1    社員番号  = ",
+        state=2:"2    氏名漢字  = ", 
+        state=3:"3    氏名カナ  = ",
+        state=4:"4    住　　所  = ", 
+        5:"コマンド入力 [@=保存, DEL=削除, /=上, //=最初, $=終了]: ")
+
+    if state=5 Write !
+    Write prompt
+    Read input
+    W !
+    Quit input
+
+#; SaveEmployee(employee)
+#;     Write !,"",employee(1),!
+#;     Write !,"[登録しました]",!
+#;     Hang 1
+#;     Do Main
+#;     Quit
+
+#; DeleteEmployee(employee)
+#;     Write !,"[削除しました]",!
+#;     Quit
+
+
+SaveEmployee(employee)
+    If $Data(employee) {
+        Set status = $$Save(.employee)
+        If status {
+            Write !,"保存成功!",!
+            Do DisplayEmployee(.employee)
+        }
+        Else {
+            Write !,"保存エラー!",!
+        }
+    }
+    Else {
+        Write !,"保存するデータがありません!",!
+    }
+    Quit
+
+DeleteEmployee(employee)
+    If $Data(employee) && $Get(employee("EmployeeNumber"))'="" {
+        Set status = $$Delete(employee("EmployeeNumber"))
+        If status {
+            Write !,"削除成功!",!
+        }
+        Else {
+            Write !,"削除エラー!",!
+        }
+    }
+    Else {
+        Write !,"削除対象がありません!",!
+    }
+    Quit
+
+DisplayEmployee(employee)
+    Write !,"1    社員番号  = ",$Get(employee("EmployeeNumber"))
+    Write !,"2    氏名漢字  = ",$Get(employee("NameKanji"))
+    Write !,"3    氏名カナ  = ",$Get(employee("NameKana"))
+    Write !,"4    住　　所  = ",$Get(employee("Address")),!
+    Quit
+
+ValidateZenkaku(input)
+    If $MATCH(input, "^[一-龥ぁ-んァ-ヶー　]+$") {
+        Quit 1
+    }
+    Quit 0
+
+ValidateHankaku(input)  
+    If $MATCH(input, "^[ｦ-ﾟ ｡-ﾟ]+$") {
+        Quit 2
+    }
+    Quit 0
+
+ValidateEmployeeNumber(num)
+    Quit (num?4N) || (num?3N) || (num?2N) || (num?1N)
+
+Save(emp)
+    If $Get(emp("EmployeeNumber"))'="" {
+        New num
+        Set num = emp("EmployeeNumber")
+        Kill ^BVIEmployee(num)
+        Merge ^BVIEmployee(num) = emp
+        Quit 1
+    }
+    Quit 0
+
+Delete(num)
+    If $Data(^BVIEmployee(num)) {
+        Kill ^BVIEmployee(num)
+        Quit 1
+    }
+    Quit 0
+
+InitEmployee(emp)
+    Set emp("EmployeeNumber") = ""
+    Set emp("NameKanji") = ""
+    Set emp("NameKana") = ""
+    Set emp("Address") = ""
+    Quit
+
+
