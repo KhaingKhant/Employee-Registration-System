@@ -2,6 +2,8 @@
 
 A simple employee registration system built with InterSystems IRIS. This system manages employee information with support for Japanese character input validation.
 
+> **Note**: `src/mac/EMP.mac` is the main program file. Other files in the repository are deprecated and maintained only for reference.
+
 ## Features
 
 - Employee registration with validation
@@ -25,13 +27,18 @@ git clone https://github.com/KhaingKhant/Employee-Registration-System.git
 
 2. Create a new namespace 'BVI' in IRIS Management Portal
 
-3. Import the code:
-   - Open VS Code
+3. Import and run the program:
+   - Open VS Code with InterSystems ObjectScript extension
    - Connect to your IRIS instance
-   - Compile the classes
+   - Load and compile `src/mac/EMP.mac`
+   - Run the program by executing:
+     ```objectscript
+     DO ^EMP
+     ```
 
 ## Development
 
-- Use VS Code with InterSystems ObjectScript extension
+- Only modify `src/mac/EMP.mac` as it contains the complete, up-to-date implementation
+- Other files (`*.cls` and other `*.mac` files) are deprecated
 - Follow the included .gitignore for version control
-- Run tests before committing changes
+- Test the program thoroughly before committing changes
