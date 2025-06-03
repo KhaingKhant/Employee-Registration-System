@@ -8,40 +8,37 @@ Main
     Set ^CusorPosition = ""
     Set ^BVIEmployee = ""  ; Initialize global for employee records
 
-    Set employee(1)="", employee(2)="", employee(3)="", employee(4)=""
     Set state=1  ; 1: 社員番号, 2: 氏名漢字, 3: 氏名カナ, 4: 住所
     Set done=0
 
     While 'done {
         Set cmd = $$GetInput(state)
         If cmd="" {
-            WRITE $CHAR(27)_"[A"
+            #; WRITE $CHAR(27)_"[A"
+            #; Write $C(27)_"[0K"
+
         }
-        If cmd="$" { Set done=1 Quit }
+        ElseIf cmd="$" { Set done=1 Quit }
         ElseIf cmd="/" {
             If state>1 {
                 Set state=state-1 
-                Set employee(state)=""
-                Set state = $$MoveOneLineUp(state)
+                Do MoveOneLineUp(state)
             }
         }
         ElseIf cmd="//" {
             Set state=1
-            Set employee(1)="", employee(2)="", employee(3)="", employee(4)=""
-            Set state = $$MoveToStart(state)
+            Do MoveToStart(state)
         }
         ElseIf cmd="@" {
             If state=5{
                 Do SaveEmployee(.employee)
-                Set state=1 
-                Set employee(1)="", employee(2)="", employee(3)="", employee(4)=""
-
+                Set state=1 ; Need to write Screen Reset Funciton here
             } 
         }
         ElseIf cmd="DEL" {
             If state=5 {
                 Do DeleteEmployee(.employee)
-                Set state=1 Set employee(1)="", employee(2)="", employee(3)="", employee(4)=""
+                Set state=1 ; Need to write Screen Reset Funciton here
             }
         }
         Else {
@@ -49,7 +46,7 @@ Main
             If state<5 {
                 Set newState = $$ProcessState(state, cmd, .employee)
                 Set state = newState
-                Set employee(state)=cmd
+                #; Set employee(state)=cmd
             }
         }
     }
@@ -59,13 +56,13 @@ Main
 MoveOneLineUp(state)
     ; Move cursor up one line and clear that line (dynamic, for any field)
     Do SetCursorState(^CusorPosition(state))
-    Quit state
+    Quit
 
 MoveToStart(state)
     ; Move cursor to the top of the screen
     Do SetCursorState(^CusorPosition(1))
     Write $C(27)_"[0J"  
-    Quit state
+    Quit
 
 SetCursorState(rowNo)
     Write $C(27)_"["_rowNo_"H"
@@ -75,38 +72,22 @@ SetCursorState(rowNo)
 
 ProcessState(state, cmd, employee)
     If state=1 {
-        If '$$ValidateEmployeeNumber(cmd) {
-            Write ?30,"無効な社員番号!",!
-            Quit 1
-        }
-
         If $Data(^BVIEmployee(cmd)) {
             Merge employee = ^BVIEmployee(cmd)
-            Write !, "",employee("EmployeeNumber"), !
-            Write !,"既存のレコードを読み込みました:",!
             Do DisplayEmployee(.employee)
             Quit 5
         }
         Else {
-            Do InitEmployee(.employee)
             Set employee("EmployeeNumber") = cmd
-            Set ^CusorPosition(1) = $Y
             Set state=state+1
+            Set ^CusorPosition(1) = $Y
         }
     } ElseIf state=2 {
-        If '$$ValidateZenkaku(cmd) {
-            Write ?30,"無効な漢字入力!",!
-            Quit 2
-        }
         Set employee("NameKanji") = cmd
         Set state=state+1
         Set ^CusorPosition(2) = $Y
 
     } ElseIf state=3 {
-        If '$$ValidateHankaku(cmd) {
-            Write ?30,"無効なカナ入力!",!
-            Quit 3
-        }
         Set employee("NameKana") = cmd
         Set state=state+1
         Set ^CusorPosition(3) = $Y
@@ -146,24 +127,35 @@ GetInput(state)
     if state=5 Write !
     Write prompt
     Read input
-    #; if state= 1 {
-    #;     If '$$ValidateEmployeeNumber(state) {
-    #;         Write ?30,"無効な社員番号!",!
-    #;         Quit 1
-    #;     }
-    #; }
-    #; ElseIf state=2 {
-    #;     If '$$ValidateZenkaku(input) {
-    #;         Write ?30,"無効な漢字入力!",!
-    #;         Quit 2
-    #;     }
-    #; }
-    #; ElseIf state=3 {
-    #;     If '$$ValidateHankaku(input) {
-    #;         Write ?30,"無効なカナ入力!",!
-    #;         Quit 3
-    #;     }
-    #; }
+    
+    If input="/"   { W ! Quit input }
+    If input="//"  { W ! Quit input }
+    If input="$"   { W ! Quit input }
+
+
+    If state= 1 {
+        If '$$ValidateEmployeeNumber(input) {
+            Write ?30,"無効な社員番号!",!            
+            Set state=1
+            Hang 1
+            DO ClearErrorLine
+            Quit ""
+        }
+    }
+    ElseIf state=2 {
+        If '$$ValidateZenkaku(input) {
+            Write ?30,"無効な漢字入力!",!
+            Set state=2
+            Quit ""
+        }
+    }
+    ElseIf state=3 {
+        If '$$ValidateHankaku(input) {
+            Write ?30,"無効なカナ入力!",!
+            Set state=3
+            Quit ""
+        }
+    }
     W ! ; for next line input
     Quit input
 
@@ -174,7 +166,7 @@ SaveEmployee(employee)
         Set status = $$Save(.employee)
         If status {
             Write !,"保存成功!",!
-            Do DisplayEmployee(.employee)
+            #; Do DisplayEmployee(.employee)
         }
         Else {
             Write !,"保存エラー!",!
@@ -201,11 +193,17 @@ DeleteEmployee(employee)
     Quit
 
 DisplayEmployee(employee)
-    Write !,"1    社員番号  = ",$Get(employee("EmployeeNumber"))
-    Write !,"2    氏名漢字  = ",$Get(employee("NameKanji"))
+    Write "2    氏名漢字  = ",$Get(employee("NameKanji"))
+    Set ^CusorPosition(2) = $Y + 1
+
     Write !,"3    氏名カナ  = ",$Get(employee("NameKana"))
-    Write !,"4    住　　所  = ",$Get(employee("Address")),!
-    Quit
+    Set ^CusorPosition(3) = $Y + 1
+
+    Write !,"4    住　　所  = ",$Get(employee("Address"))
+    Set ^CusorPosition(4) = $Y + 1
+
+    W ! ; Line Between command operation and inputs section
+    Quit 5
 
 ValidateZenkaku(input)
     If $MATCH(input, "^[一-龥ぁ-んァ-ヶー　]+$") {
@@ -215,7 +213,7 @@ ValidateZenkaku(input)
 
 ValidateHankaku(input)  
     If $MATCH(input, "^[ｦ-ﾟ ｡-ﾟ]+$") {
-        Quit 2
+        Quit 1
     }
     Quit 0
 
@@ -239,11 +237,8 @@ Delete(num)
     }
     Quit 0
 
-InitEmployee(emp)
-    Set emp("EmployeeNumber") = ""
-    Set emp("NameKanji") = ""
-    Set emp("NameKana") = ""
-    Set emp("Address") = ""
+ClearErrorLine
+    Write $C(27)_"[1A"
+    #; Write $C(13)
+    Write $C(27)_"[K"
     Quit
-
-
