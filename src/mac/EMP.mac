@@ -13,11 +13,7 @@ Main
 
     While 'done {
         Set cmd = $$GetInput(state)
-        If cmd="" {
-            #; WRITE $CHAR(27)_"[A"
-            #; Write $C(27)_"[0K"
-
-        }
+        If cmd="" {Continue}
         ElseIf cmd="$" { Set done=1 Quit }
         ElseIf cmd="/" {
             If state>1 {
@@ -135,10 +131,11 @@ GetInput(state)
 
     If state= 1 {
         If '$$ValidateEmployeeNumber(input) {
-            Write ?30,"無効な社員番号!",!            
+            Write ?30,"無効な社員番号!" ,!          
             Set state=1
             Hang 1
             DO ClearErrorLine
+            Do SetCursorState(^CusorPosition(state))
             Quit ""
         }
     }
@@ -146,6 +143,9 @@ GetInput(state)
         If '$$ValidateZenkaku(input) {
             Write ?30,"無効な漢字入力!",!
             Set state=2
+            Hang 1
+            DO ClearErrorLine
+            Do SetCursorState(^CusorPosition(state))
             Quit ""
         }
     }
@@ -153,6 +153,9 @@ GetInput(state)
         If '$$ValidateHankaku(input) {
             Write ?30,"無効なカナ入力!",!
             Set state=3
+            Hang 1
+            DO ClearErrorLine
+            Do SetCursorState(^CusorPosition(state))
             Quit ""
         }
     }
@@ -218,8 +221,8 @@ ValidateHankaku(input)
     Quit 0
 
 ValidateEmployeeNumber(num)
-    Quit (num?4N) || (num?3N) || (num?2N) || (num?1N)
-
+    Quit (num?1N) || (num?2N) || (num?3N) || (num?4N)
+         
 Save(emp)
     If $Get(emp("EmployeeNumber"))'="" {
         New num
@@ -238,7 +241,5 @@ Delete(num)
     Quit 0
 
 ClearErrorLine
-    Write $C(27)_"[1A"
-    #; Write $C(13)
     Write $C(27)_"[K"
     Quit
