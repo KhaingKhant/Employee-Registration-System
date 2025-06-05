@@ -159,6 +159,16 @@ GetInput(state)
             Quit ""
         }
     }
+    ElseIf state=4 {
+        If '$$ValidateAddress(input) {
+            Write ?30,"無効な住所入力!",!
+            Set state=4
+            Hang 1
+            DO ClearErrorLine
+            Do SetCursorState(^CusorPosition(state))
+            Quit ""
+        }
+    }
     W ! ; for next line input
     Quit input
 
@@ -169,7 +179,8 @@ SaveEmployee(employee)
         Set status = $$Save(.employee)
         If status {
             Write !,"保存成功!",!
-            #; Do DisplayEmployee(.employee)
+            Hang 1
+            Do Main ; Reset the screen
         }
         Else {
             Write !,"保存エラー!",!
@@ -185,6 +196,8 @@ DeleteEmployee(employee)
         Set status = $$Delete(employee("EmployeeNumber"))
         If status {
             Write !,"削除成功!",!
+            Hang 1
+            Do Main ; Reset the screen
         }
         Else {
             Write !,"削除エラー!",!
@@ -222,6 +235,14 @@ ValidateHankaku(input)
 
 ValidateEmployeeNumber(num)
     Quit (num?1N) || (num?2N) || (num?3N) || (num?4N)
+
+
+ValidateAddress(input)
+    ; Assuming address can be any character, but not empty and not hankaku
+    If $MATCH(input, "^[ｦ-ﾟ ｡-ﾟ]+$") || (input'="") {
+        Quit 1
+    }
+    Quit 0
          
 Save(emp)
     If $Get(emp("EmployeeNumber"))'="" {
