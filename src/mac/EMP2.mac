@@ -6,7 +6,6 @@ Main
     New employee, state, done, cmd
     Set ^CusorPosition = ""
     Set ^BVIEmployee = ""  ; Initialize global for employee records
-    Set EditMode = 1 ; Set edit mode for cursor positioning
     Set state=1  ; 1: 社員番号, 2: 氏名漢字, 3: 氏名カナ, 4: 住所
     Set done=0
     Set onEditMode = 0 ; Flag for edit mode
@@ -14,12 +13,13 @@ Main
     While 'done {
         Set cmd = $$GetInput(state)
         If cmd="" {Continue}
+        ElseIf cmd="__DEFAULT__" {
+        Set state = state + 1
+        Write $C(27)_"[K" 
+        Continue
+        }
         ElseIf cmd="$" { Set done=1 Quit }
         ElseIf cmd="/" {
-            ; Prevent "/" command in state 1
-            #; If state = 1 {
-            #;     Continue
-            #; }
             If state > 1 {
                 If onEditMode {
                     if state = 5 {
@@ -28,19 +28,10 @@ Main
                         Write $C(27)_"[0J"
                     }
                     Else {
-                        #; if state = 4 {Write $C(27)_"[J"}  Else {Write $C(27)_"[2K"} ; Clear from cursor to end of screen
-                        Do SetEditModeCursorState(^CusorPosition(state))
-                        Set fieldName = $Case(state,
-                            1:"EmployeeNumber",
-                            2:"NameKanji",
-                            3:"NameKana",
-                            4:"Address",
-                            :"")
-                        Write state_"    "_$$GetFieldPrompt(state)_" = ",  
-                        $Get(^BVIEmployee($Get(employee("EmployeeNumber")),fieldName))
+                        Do SetDefaultValue(state,.employee)
                         Set state = state-1
                         Do MoveOneLineUpEditState(state)
-                        #; Set onEditMode = 1 ; Exit edit mode
+                        
                     }
                 }
                 Else {
@@ -54,8 +45,17 @@ Main
             }
         }
         ElseIf cmd="//" {
-            Set state=1
-            Do MoveToStart(state)
+            If onEditMode {
+                Set state = 1
+                #; Do SetDefaultValue(state,.employee)
+                Do MoveToStartEditState(state)
+                Write $C(27)_"[K" 
+
+            }
+            Else {
+                Set state = 1
+                Do MoveToStart(state)
+            }
         }
         ElseIf cmd="@" {
             If state=5{
@@ -74,7 +74,6 @@ Main
             If state<5 {
                 Set newState = $$ProcessState(state, cmd, .employee)
                 Set state = newState
-                #; Set employee(state)=cmd
             }
         }
     }
@@ -82,13 +81,14 @@ Main
     Quit
 
 MoveOneLineUpEditState(state)
-    ; Move cursor up one line and clear that line (dynamic, for any field)
     Do SetEditModeCursorState(^CusorPosition(state))
     if state = 4 {
         Write $C(27)_"[0J"
-        Write $C(27)_"[0K" 
     }
+    Write $C(27)_"[K" 
     Quit
+MoveToStartEditState(state)
+    Do SetEditModeCursorState(^CusorPosition(state))
 MoveOneLineUp(state)
     ; Move cursor up one line and clear that line (dynamic, for any field)
     Do SetCursorState(^CusorPosition(state))
@@ -113,7 +113,11 @@ SetCursorState(rowNo)
 ProcessState(state, cmd, employee)
     If state=1 {
         ; Reset edit mode if already in edit mode (reached top and entering new data)
-        If onEditMode=1 Set onEditMode=0
+        If onEditMode=1 {
+            Set onEditMode=0 
+            Write $C(27)_"[0J"
+
+        }
         
         If $Data(^BVIEmployee(cmd)) {
             Merge employee = ^BVIEmployee(cmd)
@@ -168,7 +172,10 @@ GetInput(state)
         state=4:"4    住　　所  = ", 
         5:"コマンド入力 [@=保存, DEL=削除, /=上, //=最初, $=終了]: ")
 
-    if state=5 Write !
+    if state=5 {
+        Write !
+        Set ^CusorPosition(5) = $Y
+    }
     Write prompt
     Read input
     
@@ -189,7 +196,20 @@ GetInput(state)
         }
     }
 
-    If state= 1 {
+    If input="" && (state<5) {
+        If onEditMode {
+            Set fieldName = $Case(state,
+                1:"EmployeeNumber", 2:"NameKanji", 3:"NameKana", 4:"Address", :"")
+            Set prevValue = $Get(employee(fieldName))
+            Write prevValue, !
+            If prevValue'="" {
+                Quit "__DEFAULT__"
+            }        
+        }
+    }
+
+
+    If state= 1{
         If '$$ValidateEmployeeNumber(input) {
             Write ?30,"無効な社員番号!" ,!          
             Set state=1
@@ -223,6 +243,17 @@ GetInput(state)
         If '$$ValidateAddress(input) {
             Write ?30,"無効な住所入力!",!
             Set state=4
+            Hang 1
+            DO ClearErrorLine
+            Do SetCursorState(^CusorPosition(state))
+            Quit ""
+        }
+    }
+    ElseIf state=5 {
+       ;Validate that only valid commands are entered
+        If '$$ValidateCommands(input){
+            Write ?30,"無効なコマンド!",!
+            Set state = 5
             Hang 1
             DO ClearErrorLine
             Do SetCursorState(^CusorPosition(state))
@@ -303,6 +334,13 @@ ValidateAddress(input)
         Quit 1
     }
     Quit 0
+
+ValidateCommands(input)
+    ; Validate that input is one of the allowed commands
+    If input="@" || input="DEL" || input="/" || input="//" || input="$" {
+        Quit 1
+    }
+    Quit 0
          
 Save(emp)
     If $Get(emp("EmployeeNumber"))'="" {
@@ -325,11 +363,19 @@ ClearErrorLine
     Write $C(27)_"[K"
     Quit
 
-GetFieldPrompt(state) Public {
+GetFieldPrompt(state) {
     Quit $Case(state,
         1:"社員番号 ",
         2:"氏名漢字 ",
         3:"氏名カナ ",
         4:"住　　所 ",
         :"")
+}
+
+SetDefaultValue(state,employee) {
+    Do SetEditModeCursorState(^CusorPosition(state))
+    Set fieldName = $Case(state,1:"EmployeeNumber",2:"NameKanji",3:"NameKana",
+        4:"Address",:"")
+        Write state_"    "_$$GetFieldPrompt(state)_" = ",  
+        $Get(^BVIEmployee($Get(employee("EmployeeNumber")),fieldName))
 }
