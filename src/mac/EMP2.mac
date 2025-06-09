@@ -1,6 +1,11 @@
 ROUTINE EMP2
     Do Main
     Quit
+
+#Define GREEN "32;2"
+#Define RED "31"
+#Define RESET "[0m"
+#Define BLUE "34;2"
 Main
     Do DisplayHeader
     New employee, state, done, cmd
@@ -19,6 +24,14 @@ Main
         Continue
         }
         ElseIf cmd="$" { Set done=1 Quit }
+        ElseIf state=5, cmd="@" {
+        Do SaveEmployee(.employee)
+        Quit 
+        }
+        ElseIf state=5, cmd="DEL" {
+            Do DeleteEmployee(.employee)
+            Quit
+        }
         ElseIf cmd="/" {
             If state > 1 {
                 If onEditMode {
@@ -46,29 +59,18 @@ Main
         }
         ElseIf cmd="//" {
             If onEditMode {
-                Set state = 1
-                #; Do SetDefaultValue(state,.employee)
-                Do MoveToStartEditState(state)
+                Do SetEditModeCursorState(^CusorPosition(state))
                 Write $C(27)_"[K" 
-
+                Do SetEditModeCursorState(^CusorPosition(1))
+                Write $C(27)_"[K" 
+                Set state = 1
             }
             Else {
                 Set state = 1
                 Do MoveToStart(state)
             }
         }
-        ElseIf cmd="@" {
-            If state=5{
-                Do SaveEmployee(.employee)
-                Set state=1
-            } 
-        }
-        ElseIf cmd="DEL" {
-            If state=5 {
-                Do DeleteEmployee(.employee)
-                Set state=1
-            }
-        }
+       
         Else {
             ; Normal input, store and go next
             If state<5 {
@@ -77,7 +79,9 @@ Main
             }
         }
     }
-    Write !,"プログラムを終了しました。",!
+    
+    Write !,$CHAR(27)_"["_$$$BLUE_"m"_"========= プログラムを終了しました! ========="_$CHAR(27)_$$$RESET,!            
+
     Quit
 
 MoveOneLineUpEditState(state)
@@ -87,8 +91,9 @@ MoveOneLineUpEditState(state)
     }
     Write $C(27)_"[K" 
     Quit
-MoveToStartEditState(state)
-    Do SetEditModeCursorState(^CusorPosition(state))
+
+    
+
 MoveOneLineUp(state)
     ; Move cursor up one line and clear that line (dynamic, for any field)
     Do SetCursorState(^CusorPosition(state))
@@ -145,14 +150,14 @@ ProcessState(state, cmd, employee)
         Set state=state+1
         Set ^CusorPosition(4) = $Y
     } ElseIf state=5 {
-        If cmd="@" {
-            Return 5  
-        } ElseIf cmd="DEL" {
-            Return 5  
-        } ElseIf cmd="/" {
-            Return state-1  
-        } ElseIf cmd="//" {
-            Return 1  
+         If cmd="@" || cmd="DEL" {
+            Quit state 
+        }
+        ElseIf cmd="/" {
+            Quit state-1
+        }
+        ElseIf cmd="//" {
+           Quit 1
         }
     }
     Return state    
@@ -179,6 +184,27 @@ GetInput(state)
     Write prompt
     Read input
     
+    If state=5 {
+         If input="" {
+            Do SetCursorState(^CusorPosition(state))
+            Quit ""
+        }
+        
+        If input="@" { Quit input }
+        If input="DEL" { Quit input }
+        If input="/"   { W ! Quit input }
+        If input="//"  { W ! Quit input }
+        If input="$"   { W ! Quit input }
+
+        If input'="", '$$ValidateCommands(input){
+            Write ?30,$CHAR(27)_"["_$$$RED_"m"_"  無効なコマンド!"_$CHAR(27)_$$$RESET,!
+            Set state = 5
+            Hang 1
+            DO ClearErrorLine
+            Do SetCursorState(^CusorPosition(state))
+            Quit ""
+        }
+    }
     ; Handle special commands except in state 1
     If state > 1 {
         If input="/"   { W ! Quit input }
@@ -188,7 +214,7 @@ GetInput(state)
 
     If state = 1 {
         If (input="/") || (input="//") {
-            Write ?30,"社員番号を入力してください!",!
+            Write ?30,$CHAR(27)_"["_$$$RED_"m"_"  社員番号を入力してください!"_$CHAR(27)_$$$RESET,!
             Hang 1
             DO ClearErrorLine
             Do SetCursorState(^CusorPosition(state))
@@ -211,7 +237,7 @@ GetInput(state)
 
     If state= 1{
         If '$$ValidateEmployeeNumber(input) {
-            Write ?30,"無効な社員番号!" ,!          
+        Write ?30,$CHAR(27)_"["_$$$RED_"m"_"  無効な社員番号!"_$CHAR(27)_$$$RESET,!
             Set state=1
             Hang 1
             DO ClearErrorLine
@@ -221,7 +247,7 @@ GetInput(state)
     }
     ElseIf state=2 {
         If '$$ValidateZenkaku(input) {
-            Write ?30,"無効な漢字入力!",!
+            Write ?30,$CHAR(27)_"["_$$$RED_"m"_"  無効な漢字入力!"_$CHAR(27)_$$$RESET,!
             Set state=2
             Hang 1
             DO ClearErrorLine
@@ -231,7 +257,7 @@ GetInput(state)
     }
     ElseIf state=3 {
         If '$$ValidateHankaku(input) {
-            Write ?30,"無効なカナ入力!",!
+        Write ?30,$CHAR(27)_"["_$$$RED_"m"_"  無効なカナ入力!"_$CHAR(27)_$$$RESET,!
             Set state=3
             Hang 1
             DO ClearErrorLine
@@ -241,7 +267,7 @@ GetInput(state)
     }
     ElseIf state=4 {
         If '$$ValidateAddress(input) {
-            Write ?30,"無効な住所入力!",!
+        Write ?30,$CHAR(27)_"["_$$$RED_"m"_"  無効な住所入力!"_$CHAR(27)_$$$RESET,!
             Set state=4
             Hang 1
             DO ClearErrorLine
@@ -249,36 +275,26 @@ GetInput(state)
             Quit ""
         }
     }
-    ElseIf state=5 {
-       ;Validate that only valid commands are entered
-        If '$$ValidateCommands(input){
-            Write ?30,"無効なコマンド!",!
-            Set state = 5
-            Hang 1
-            DO ClearErrorLine
-            Do SetCursorState(^CusorPosition(state))
-            Quit ""
-        }
-    }
+   
     W ! ; for next line input
     Quit input
-
 
 
 SaveEmployee(employee)
     If $Data(employee) {
         Set status = $$Save(.employee)
         If status {
-            Write !,"保存成功!",!
-            Hang 1
-            Do Main ; Reset the screen
+        Write !
+        Write !,$CHAR(27)_"["_$$$GREEN_"m"_"========= 保存成功! ========="_$CHAR(27)_$$$RESET,!            
+        Hang 1
+        Do Main ; Reset the screen
         }
         Else {
-            Write !,"保存エラー!",!
+            Write !,$CHAR(27)_"["_$$$RED_"m"_"========= 保存エラー! ========="_$CHAR(27)_$$$RESET,!
         }
     }
     Else {
-        Write !,"保存するデータがありません!",!
+        Write !,$CHAR(27)_"["_$$$RED_"m"_"========= 保存するデータがありません! ========= "_$CHAR(27)_$$$RESET,!
     }
     Quit
 
@@ -286,16 +302,16 @@ DeleteEmployee(employee)
     If $Data(employee) && $Get(employee("EmployeeNumber"))'="" {
         Set status = $$Delete(employee("EmployeeNumber"))
         If status {
-            Write !,"削除成功!",!
+            Write !,$CHAR(27)_"["_$$$GREEN_"m"_"========= 削除成功!  保存するデータがありません! ========="_$CHAR(27)_$$$RESET,!
             Hang 1
             Do Main ; Reset the screen
         }
         Else {
-            Write !,"削除エラー!",!
+            Write !,$CHAR(27)_"["_$$$RED_"m"_"========= 削除エラー! ========="_$CHAR(27)_$$$RESET,!
         }
     }
     Else {
-        Write !,"削除対象がありません!",!
+        Write !,$CHAR(27)_"["_$$$RED_"m"_"========= 削除対象がありません! ========= "_$CHAR(27)_$$$RESET,!
     }
     Quit
 
@@ -337,9 +353,10 @@ ValidateAddress(input)
 
 ValidateCommands(input)
     ; Validate that input is one of the allowed commands
-    If input="@" || input="DEL" || input="/" || input="//" || input="$" {
+    If (input="/" || input="//" || input="$" || input="@" || input="DEL") {
         Quit 1
     }
+
     Quit 0
          
 Save(emp)
