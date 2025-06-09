@@ -59,8 +59,8 @@ Main
         }
         ElseIf cmd="//" {
             If onEditMode {
-                Do SetEditModeCursorState(^CusorPosition(state))
-                Write $C(27)_"[K" 
+                if state = 5 {Write $C(27)_"[0J"}
+                Do SetDefaultValue(state,.employee)
                 Do SetEditModeCursorState(^CusorPosition(1))
                 Write $C(27)_"[K" 
                 Set state = 1
@@ -91,9 +91,7 @@ MoveOneLineUpEditState(state)
     }
     Write $C(27)_"[K" 
     Quit
-
-    
-
+  
 MoveOneLineUp(state)
     ; Move cursor up one line and clear that line (dynamic, for any field)
     Do SetCursorState(^CusorPosition(state))
@@ -390,6 +388,7 @@ GetFieldPrompt(state) {
 }
 
 SetDefaultValue(state,employee) {
+    If state = 5 Set state = state-1
     Do SetEditModeCursorState(^CusorPosition(state))
     Set fieldName = $Case(state,1:"EmployeeNumber",2:"NameKanji",3:"NameKana",
         4:"Address",:"")
