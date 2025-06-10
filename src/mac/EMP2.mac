@@ -70,7 +70,7 @@ Main
             }
         }
     }
-    Do PrintInfo("========= プログラムを終了しました! =========")
+    Write !,$CHAR(27)_"["_$$$BLUE_"m"_"========= プログラムを終了しました! ========="_$CHAR(27)_$$$RESET,!
     Quit
 
 MoveOneLineUpEditState(state)
@@ -187,7 +187,7 @@ GetInput(state, employee)
         If input="$" { W ! Quit ":EXIT" }
 
         If input'="", '$$ValidateCommands(input){
-            Do PrintError("  社員番号を入力してください!")
+            Write ?30,$CHAR(27)_"["_$$$RED_"m"_"  無効なコマンド!"_$CHAR(27)_$$$RESET,!
             Set state = 5
             Hang 1
             DO ClearErrorLine
@@ -195,7 +195,6 @@ GetInput(state, employee)
             Quit ""
         }
     }
-    
     If state > 1 {
         If input="/"    { W ! Quit ":UP" }
         If input="//"   { W ! Quit ":TOP" }
@@ -204,14 +203,13 @@ GetInput(state, employee)
 
     If state = 1 {
         If (input="/") || (input="//") {
-            Do PrintError($$GetErrorMessageByState(state))
+            Write ?30,$CHAR(27)_"["_$$$RED_"m"_"  社員番号を入力してください!"_$CHAR(27)_$$$RESET,!
             Hang 1
             DO ClearErrorLine
             Do SetCursorToRow(^CusorPosition(state),1)
             Quit ""
         }
     }
-
     If input="" && (state<5) {
         If onEditMode {
             Set fieldName = $$GetFieldName(state)
@@ -221,7 +219,7 @@ GetInput(state, employee)
                 Quit ":DEFAULT"
             }        
         } Else{ 
-            Do PrintError($$GetErrorMessageByState(state))
+            Write ?30,$CHAR(27)_"["_$$$RED_"m"_$$GetErrorMessageByState(state)_$CHAR(27)_$$$RESET,!
             Set state=state
             Hang 1
             DO ClearErrorLine
@@ -229,10 +227,9 @@ GetInput(state, employee)
             Quit ""
         }
     }
-
     If state<5, input'="", '$$ValidateInputByState(state, input) 
     {
-        Do PrintError($$GetErrorMessageByState(state))
+        Write ?30,$CHAR(27)_"["_$$$RED_"m"_$$GetErrorMessageByState(state)_$CHAR(27)_$$$RESET,!
         Set state=state
         Hang 1
         DO ClearErrorLine
@@ -247,16 +244,16 @@ SaveEmployee(employee)
         Set status = $$Save(.employee)
         If status {
             Write !
-            Do PrintSuccess("========= 保存成功! =========")
+            Write !,$CHAR(27)_"["_$$$GREEN_"m"_"========= 保存成功! ========="_$CHAR(27)_$$$RESET,!
             Hang 1
             Do Main ; Reset the screen
         }
         Else {
-            Do PrintError("========= 保存エラー! =========")
+            Write !,$CHAR(27)_"["_$$$RED_"m"_"========= 保存エラー! ========="_$CHAR(27)_$$$RESET,!
         }
     }
     Else {
-            Do PrintError("========= 保存するデータがありません! ========= ")
+        Write !,$CHAR(27)_"["_$$$RED_"m"_"========= 保存するデータがありません! ========= "_$CHAR(27)_$$$RESET,!
     }
     Quit
 
@@ -264,16 +261,16 @@ DeleteEmployee(employee)
     If $Data(employee) && $Get(employee("EmployeeNumber"))'="" {
         Set status = $$Delete(employee("EmployeeNumber"))
         If status {
-            Do PrintSuccess("========= 削除成功!  保存するデータがありません! =========")
+            Write !,$CHAR(27)_"["_$$$GREEN_"m"_"========= 削除成功! ========="_$CHAR(27)_$$$RESET,!
             Hang 1
             Do Main ; Reset the screen
         }
         Else {
-            Do PrintError("========= 削除エラー! =========")
+            Write !,$CHAR(27)_"["_$$$RED_"m"_"========= 削除エラー! ========="_$CHAR(27)_$$$RESET,!
         }
     }
     Else {
-            Do PrintError("========= 削除対象がありません! ========= ")
+        Write !,$CHAR(27)_"["_$$$RED_"m"_"========= 削除対象がありません! ========= "_$CHAR(27)_$$$RESET,!
     }
     Quit
 
@@ -350,18 +347,3 @@ SetDefaultValue(state,employee)
     Do RenderField(state, .employee)
     Quit
 
-PrintError(msg)
-    Write ?30, $CHAR(27)_"[31m", msg, $CHAR(27)_"[0m", !
-    Quit
-
-PrintInfo(msg)
-    Write ?30, $CHAR(27)_"[34;2m", msg, $CHAR(27)_"[0m", !
-    Quit
-
-PrintSuccess(msg)
-    Write ?30, $CHAR(27)_"[32;2m", msg, $CHAR(27)_"[0m", !
-    Quit
-
-PrintWarn(msg)
-    Write ?30, $CHAR(27)_"[33m", msg, $CHAR(27)_"[0m", !
-    Quit
