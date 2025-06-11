@@ -2,7 +2,7 @@
 
 A simple employee registration system built with InterSystems IRIS. This system manages employee information with support for Japanese character input validation.
 
-> **Note**: `src/mac/EMP.mac` is the main program file. Other files in the repository are deprecated and maintained only for reference.
+> **Note**: `src/mac/EMP2.mac` is the main program file. Other files in the repository are deprecated and maintained only for reference.
 
 ## Features
 
@@ -33,7 +33,7 @@ git clone https://github.com/KhaingKhant/Employee-Registration-System.git
    - Load and compile `src/mac/EMP.mac`
    - Run the program by executing:
      ```objectscript
-     DO ^EMP
+     DO ^EMP2
      ```
 
 ## Development
